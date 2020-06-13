@@ -155,7 +155,6 @@ public class GcsStorageService {
 
   public void downloadStorageObjectRelative(
       StorageObject obj, String ignorePrefix, String baseDirectory) throws IOException {
-    InputStream stream = openObjectStream(obj.getBucket(), obj.getName(), obj.getGeneration());
     String objPath = obj.getName();
     if (!ignorePrefix.isEmpty()) {
       ignorePrefix += File.separator;
@@ -166,9 +165,19 @@ public class GcsStorageService {
     }
 
     File target = new File(baseDirectory, objPath);
-    ArtifactUtils.writeStreamToFile(stream, target);
-    target.setLastModified(obj.getUpdated().getValue());
-    stream.close();
+    if (objPath.endsWith("/")) {
+      if (!target.exists()) {
+        target.mkdirs();
+      }
+    } else {
+      InputStream stream = openObjectStream(obj.getBucket(), obj.getName(), obj.getGeneration());
+      try {
+        ArtifactUtils.writeStreamToFile(stream, target);
+      } finally {
+        stream.close();
+      }
+      target.setLastModified(obj.getUpdated().getValue());
+    }
   }
 
   public void downloadStorageObject(StorageObject obj, String baseDirectory) throws IOException {
